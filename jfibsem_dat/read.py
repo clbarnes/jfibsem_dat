@@ -308,6 +308,9 @@ class MetadataV8:
     def scaled_resolution(self):
         return RESOLUTION_SCALE / self.pixel_size
 
+    def to_json(self, **kwargs) -> str:
+        return json.dumps(dc.asdict(self), cls=MetadataEncoder, **kwargs)
+
 
 def infer_dtype(is_8bit, byte_order=DEFAULT_BYTE_ORDER):
     return np.dtype("uint8" if is_8bit else "int16").newbyteorder(byte_order)

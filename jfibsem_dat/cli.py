@@ -1,13 +1,11 @@
-import json
 import logging
 import typing as tp
 from argparse import ArgumentParser
-from dataclasses import asdict
 from pathlib import Path
 
 import numpy as np
 
-from .read import MetadataEncoder, MetadataV8, RawFibsemData
+from .read import MetadataV8, RawFibsemData
 
 logger = logging.getLogger(__name__)
 CMAP = "gray_r"
@@ -130,9 +128,9 @@ def dathead(args=None):
     )
     args = parser.parse_args(args)
     meta = MetadataV8.from_filepath(args.file)
-    kwargs = {}
-    if not args.compact:
+    if args.compact:
+        kwargs = dict(separators=(",", ":"))
+    else:
         kwargs = dict(indent=2, sort_keys=True)
 
-    s = json.dumps(asdict(meta), cls=MetadataEncoder, **kwargs)
-    print(s)
+    print(meta.to_json(**kwargs))
