@@ -1,18 +1,18 @@
 #!/usr/bin/env python
 from __future__ import annotations
 
+import dataclasses as dc
 import datetime as dt
 import io
 import json
 import logging
 import os
 import typing as tp
-import dataclasses as dc
 from enum import IntEnum
 from pathlib import Path
-from scipy.interpolate import interp1d
 
 import numpy as np
+from scipy.interpolate import interp1d
 
 logger = logging.getLogger(__name__)
 
@@ -454,7 +454,9 @@ class RawFibsemData:
     def scale(
         self,
         channels: tp.Optional[tp.List[int]] = None,
-        calibration: tp.Optional[tp.List[tp.Optional[tp.Tuple[tp.List[float], tp.List[float]]]]] = None,
+        calibration: tp.Optional[
+            tp.List[tp.Optional[tp.Tuple[tp.List[float], tp.List[float]]]]
+        ] = None,
         roi: tp.Optional[tp.Tuple[slice]] = None,
     ) -> tp.List[tp.Optional[Channel]]:
         """roi give as slices into numpy array (Y, X)"""
@@ -480,13 +482,18 @@ class RawFibsemData:
         exist = np.asarray(self.metadata.analogue_inputs, bool)[channels]
 
         out = []
-        for raw_c, scaling_c, names_c, exist_c, calib in zip(raw, scaling, names, exist, calibration):
+        for raw_c, scaling_c, names_c, exist_c, calib in zip(
+            raw, scaling, names, exist, calibration
+        ):
             if not exist_c:
                 channel = None
             elif calib is None:
                 if self.metadata.is_8bit:
                     factor = (
-                        self.metadata.scan_rate / scaling_c[0] / scaling_c[2] / scaling_c[3]
+                        self.metadata.scan_rate
+                        / scaling_c[0]
+                        / scaling_c[2]
+                        / scaling_c[3]
                     )
                     scaled = (raw_c.astype("float32") * factor + scaling_c[1]).astype(
                         "int16"
@@ -496,8 +503,7 @@ class RawFibsemData:
                 channel = Channel(names_c, raw_c, scaled)
             else:
                 interp = interp1d(
-                    calibration[0], calibration[1],
-                    "cubic", fill_value="extrapolate"
+                    calibration[0], calibration[1], "cubic", fill_value="extrapolate"
                 )
                 scaled = interp(self.data[raw_slice].astype("float32")).astype("uint16")
                 channel = Channel(names_c, raw_c, scaled)
@@ -508,7 +514,9 @@ class RawFibsemData:
 
 def i16_to_u16(array: np.ndarray):
     if array.dtype != np.dtype("int16"):
-        logger.warning("Array does not seem to be of type int16. Trying to convert anyway.")
+        logger.warning(
+            "Array does not seem to be of type int16. Trying to convert anyway."
+        )
     return (array.astype("float32") + HALF_I16_MAX_UP).astype("uint16")
 
 

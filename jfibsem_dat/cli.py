@@ -44,6 +44,7 @@ def view_single(fpath, channel, raw):
     from matplotlib.axes import Axes
     from matplotlib.figure import Figure
     from matplotlib_scalebar.scalebar import ScaleBar
+
     arr, meta, channel = get_array(fpath, channel, raw)
     name = meta.detector_names[channel]
 
