@@ -6,10 +6,6 @@ from dataclasses import asdict
 from pathlib import Path
 
 import numpy as np
-from matplotlib import pyplot as plt
-from matplotlib.axes import Axes
-from matplotlib.figure import Figure
-from matplotlib_scalebar.scalebar import ScaleBar
 
 from .read import MetadataEncoder, MetadataV8, RawFibsemData
 
@@ -44,6 +40,10 @@ def get_array(
 
 
 def view_single(fpath, channel, raw):
+    from matplotlib import pyplot as plt
+    from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
+    from matplotlib_scalebar.scalebar import ScaleBar
     arr, meta, channel = get_array(fpath, channel, raw)
     name = meta.detector_names[channel]
 
