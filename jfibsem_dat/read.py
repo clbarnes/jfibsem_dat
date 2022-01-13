@@ -7,7 +7,7 @@ import json
 import logging
 import os
 import typing as tp
-from dataclasses import dataclass
+import dataclasses as dc
 from enum import IntEnum
 from pathlib import Path
 from scipy.interpolate import interp1d
@@ -27,7 +27,7 @@ HEADER_LENGTH = 1024
 RESOLUTION_SCALE = 2.54e7
 
 
-@dataclass
+@dc.dataclass
 class StagePosition:
     x: float  # mm
     y: float  # mm
@@ -66,7 +66,7 @@ class MillingPidMeasured(IntEnum):
             return i
 
 
-@dataclass
+@dc.dataclass
 class MillingPID:
     is_on: bool
     measured: MillingPidMeasured
@@ -96,13 +96,13 @@ class MetadataEncoder(json.JSONEncoder):
         return super().default(o)
 
 
-@dataclass
+@dc.dataclass
 class MetadataV8:
     # v1+
     file_magic_num: int
     file_version: int
     file_type: FileType
-    sw_date: dt.datetime
+    sw_date: dt.date
     time_step: float
     n_channels: int
     is_8bit: bool
@@ -410,20 +410,20 @@ class RawFibsemData:
         shape = metadata.data_shape()
         if memmap:
             try:
-                data = raw_memmap(f, shape, metadata.is_8bit).transpose((0, 2, 1))
+                data = raw_memmap(f, shape, metadata.is_8bit)
             except ValueError as e:
-                if not (
+                if (
                     "mmap length is greater than file size" in str(e)
                     and read_if_truncated
                 ):
+                    data = raw_read(f, shape, metadata.is_8bit)
+                else:
                     raise e
-            else:
-                return cls(metadata, data, f if handle_close else None)
+        else:
+            data = raw_read(f, shape, metadata.is_8bit)
+            handle_close = False
 
-        data = raw_read(f, shape, metadata.is_8bit).transpose((0, 2, 1))
-        handle_close = False
-
-        return cls(metadata, data, f if handle_close else None)
+        return cls(metadata, data.transpose((0, 2, 1)), f if handle_close else None)
 
     @classmethod
     def from_filepath(cls, fpath: os.PathLike, memmap=False, read_if_truncated=False):
@@ -512,11 +512,12 @@ def i16_to_u16(array: np.ndarray):
     return (array.astype("float32") + HALF_I16_MAX_UP).astype("uint16")
 
 
-@dataclass
+@dc.dataclass
 class Channel:
     name: str
     raw: np.ndarray
     electron_counts: np.ndarray
+    # attributes: tp.Dict[str, tp.Any] = dc.field(default_factory=dict)
 
 
 def parse_metadata(header_bytes: bytes):
@@ -566,9 +567,9 @@ def read_from_bytes(
         # todo: check day/month order
         datetime = dt.datetime.strptime(date_str, "%m/%d/%Y")
         return datetime.date()
-    elif dtype == dt.datetime:
-        rd = read_from_bytes(b, bytes, index, size, fill=fill)
-        return dt.datetime.fromisoformat(rd.decode("utf-8"))
+    # elif dtype == dt.datetime:
+    #     rd = read_from_bytes(b, bytes, index, size, fill=fill)
+    #     return dt.datetime.fromisoformat(rd.decode("utf-8"))
 
     try:
         dtype = np.dtype(dtype)
