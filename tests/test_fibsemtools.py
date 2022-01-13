@@ -1,4 +1,4 @@
 def test_importable():
-    import fibsemtools
+    import jfibsem_dat
 
-    assert fibsemtools.__version__
+    assert jfibsem_dat.__version__

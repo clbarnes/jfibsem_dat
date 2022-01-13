@@ -9,6 +9,7 @@ import os
 import typing as tp
 from dataclasses import dataclass
 from enum import IntEnum
+from pathlib import Path
 
 import numpy as np
 
@@ -277,17 +278,17 @@ class MetadataV8:
         with open(fpath, "rb") as f:
             return cls.from_filelike(f)
 
-    def _shape_dtype(self):
-        dtype = np.dtype("uint8" if self.is_8bit else "int16").newbyteorder(
-            DEFAULT_BYTE_ORDER
-        )
-        return (self.n_channels,) + tuple(self.resolution_xy), dtype
-
     def data_length(self):
+        return self.channel_length() * self.n_channels
+
+    def data_shape(self) -> tp.Tuple[int, int, int]:
+        return (self.n_channels, ) + tuple(self.resolution_xy)
+
+    def channel_length(self):
         return np.product(self.resolution_xy.astype(int))
 
-    def data_size(self):
-        size = self.data_length()
+    def channel_size(self):
+        size = self.channel_length()
         if not self.is_8bit:
             size *= 2
         return size
@@ -301,15 +302,88 @@ class MetadataV8:
         return sum(self.analogue_inputs[:channel])
 
 
+def infer_dtype(is_8bit, byte_order=DEFAULT_BYTE_ORDER):
+    return np.dtype("uint8" if is_8bit else "int16").newbyteorder(byte_order)
+
+
+def raw_read(f: tp.Union[Path, str, io.IOBase], shape: tp.Tuple[int, int, int], is_8bit: bool = False) -> np.ndarray:
+    """Read the array directly.
+
+    The array is returned in non-python order (for each channel, X is the first axis).
+    You may want to do `raw_read(...).transpose((0, 2, 1))` to play nice with python tools like matplotlib.
+
+    Parameters
+    ----------
+    f : tp.Union[Path, str, io.IOBase]
+        File-like object or path to it.
+    shape : tp.Tuple[int]
+        Shape of the data, i.e. (n_channels, x_max, y_max)
+    is_8bit : bool, optional
+        Whether data is u8, by default False (i.e. i16)
+
+    Returns
+    -------
+    np.ndarray
+        Of the given shape, dtype, etc.
+    """
+    dtype = infer_dtype(is_8bit)
+    expected_len = int(np.product(shape))
+
+    try:
+        current_pos = f.tell()
+    except AttributeError:
+        current_pos = 0
+
+    offset = HEADER_LENGTH - current_pos
+    arr = np.fromfile(f, dtype, count=expected_len, offset=offset)
+    if len(arr) < expected_len:
+        arr = np.concatenate([arr, np.full(expected_len - len(arr), 0, dtype)])
+    return arr.reshape(
+        shape,
+        order=DEFAULT_AXIS_ORDER,
+    )
+
+
+def raw_memmap(f: tp.Union[Path, str, io.IOBase], shape: tp.Tuple[int, int, int], is_8bit: bool = False) -> np.memmap:
+    """Memory-map the array directly.
+
+    Like the numpy.memmap function, this does not handle closing the underlying file object.
+    If you want to ensure the file is closed in a tidy fashion, use
+
+    ```
+    with open(some_fpath, "rb") as f:
+        raw_memmap(f, some_shape, some_is_8bit)
+    ```
+
+    The array is returned in non-python order (for each channel, X is the first axis).
+    You may want to do `raw_memmap(...).transpose((0, 2, 1))` to play nice with python tools like matplotlib.
+
+    Parameters
+    ----------
+    f : tp.Union[Path, str, io.IOBase]
+        File-like object or a path to it.
+    shape : tp.Tuple[int]
+        Shape of the data, i.e. (n_channels, x_max, y_max)
+    is_8bit : bool, optional
+        Whether data is u8, by default False (i.e. i16)
+
+    Returns
+    -------
+    np.memmap
+    """
+    dtype = infer_dtype(is_8bit)
+    return np.memmap(
+        f, dtype, "r", HEADER_LENGTH, shape, DEFAULT_AXIS_ORDER
+    )
+
+
 class RawFibsemData:
     MAGIC_NUM = 3_555_587_570
     HEADER_LENGTH = HEADER_LENGTH
-    BYTE_ORDER = DEFAULT_BYTE_ORDER
-    AXIS_ORDER = DEFAULT_AXIS_ORDER
 
     def __init__(
         self, metadata: MetadataV8, data: np.ndarray, file_handle=None
-    ) -> None:
+    ):
         self.metadata = metadata
         self.data = data
         self._file_handle = file_handle
@@ -319,32 +393,20 @@ class RawFibsemData:
         cls, f: io.IOBase, memmap=False, handle_close=True, read_if_truncated=False
     ):
         metadata = parse_metadata(f.read(cls.HEADER_LENGTH))
-        f.seek(0)
-        shape, dtype = metadata._shape_dtype()
+        shape = metadata.data_shape()
         if memmap:
             try:
-                data = np.memmap(
-                    f, dtype, "r", cls.HEADER_LENGTH, shape, cls.AXIS_ORDER
-                ).transpose((0, 2, 1))
+                data = raw_memmap(f, shape, metadata.is_8bit).transpose((0, 2, 1))
             except ValueError as e:
-                if (
+                if not (
                     "mmap length is greater than file size" in str(e)
                     and read_if_truncated
                 ):
-                    f.seek(0)
-                else:
                     raise e
             else:
                 return cls(metadata, data, f if handle_close else None)
 
-        expected_len = int(np.product(shape))
-        arr = np.fromfile(f, dtype, count=expected_len, offset=cls.HEADER_LENGTH)
-        if len(arr) < expected_len:
-            arr = np.concatenate([arr, np.full(expected_len - len(arr), 0, dtype)])
-        data = arr.reshape(
-            shape,
-            order=cls.AXIS_ORDER,
-        ).transpose((0, 2, 1))
+        data = raw_read(f, shape, metadata.is_8bit).transpose((0, 2, 1))
         handle_close = False
 
         return cls(metadata, data, f if handle_close else None)
@@ -364,7 +426,9 @@ class RawFibsemData:
         return self
 
     def realize(self):
-        self.data = self.data[:]
+        if isinstance(self.data, np.memmap):
+            self.data = self.data[:]
+
         return self
 
     def __enter__(self):

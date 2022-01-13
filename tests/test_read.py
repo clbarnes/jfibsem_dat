@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from fibsemtools.read import RawFibsemData
+from jfibsem_dat.read import RawFibsemData
 
 
 def test_memmap_realised(fake_path):

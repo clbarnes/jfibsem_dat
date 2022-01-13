@@ -7,12 +7,12 @@ with open(Path(__file__).resolve().parent / "README.md") as f:
 
 setup(
     name="fibsemtools",
-    url="https://github.com/clbarnes/fibsemtools",
+    url="https://github.com/clbarnes/jfibsem_dat",
     author="Chris L. Barnes",
     description="",
     long_description=readme,
     long_description_content_type="text/markdown",
-    packages=find_packages(include=["fibsemtools"]),
+    packages=find_packages(include=["jfibsem_dat"]),
     install_requires=[
         "numpy",
         "matplotlib",
@@ -23,9 +23,9 @@ setup(
         "Development Status :: 3 - Alpha",
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
     ],
     use_scm_version=True,
     setup_requires=["setuptools_scm"],
