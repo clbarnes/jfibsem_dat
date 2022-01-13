@@ -10,6 +10,7 @@ import typing as tp
 from dataclasses import dataclass
 from enum import IntEnum
 from pathlib import Path
+from scipy.interpolate import interp1d
 
 import numpy as np
 
@@ -21,6 +22,9 @@ HALF_I16_MAX_UP = I16_MAX // 2 + 1
 DEFAULT_BYTE_ORDER = ">"
 DEFAULT_AXIS_ORDER = "F"
 HEADER_LENGTH = 1024
+
+# I don't know why this exists, but it's in the ref impl...
+RESOLUTION_SCALE = 2.54e7
 
 
 @dataclass
@@ -301,6 +305,9 @@ class MetadataV8:
             return None
         return sum(self.analogue_inputs[:channel])
 
+    def scaled_resolution(self):
+        return RESOLUTION_SCALE / self.pixel_size
+
 
 def infer_dtype(is_8bit, byte_order=DEFAULT_BYTE_ORDER):
     return np.dtype("uint8" if is_8bit else "int16").newbyteorder(byte_order)
@@ -447,6 +454,7 @@ class RawFibsemData:
     def scale(
         self,
         channels: tp.Optional[tp.List[int]] = None,
+        calibration: tp.Optional[tp.List[tp.Optional[tp.Tuple[tp.List[float], tp.List[float]]]]] = None,
         roi: tp.Optional[tp.Tuple[slice]] = None,
     ) -> tp.List[tp.Optional[Channel]]:
         """roi give as slices into numpy array (Y, X)"""
@@ -458,10 +466,13 @@ class RawFibsemData:
             )
             channels = [channels]
 
+        if calibration is None:
+            calibration = [None] * len(channels)
+
         if roi is None:
             raw_slice = channels
         else:
-            raw_slice = (channels,) + roi
+            raw_slice = (channels, *roi)
 
         raw = self.data[raw_slice]
         scaling = self.metadata.scaling.T[channels]
@@ -469,27 +480,36 @@ class RawFibsemData:
         exist = np.asarray(self.metadata.analogue_inputs, bool)[channels]
 
         out = []
-        for raw_c, scaling_c, names_c, exist_c in zip(raw, scaling, names, exist):
+        for raw_c, scaling_c, names_c, exist_c, calib in zip(raw, scaling, names, exist, calibration):
             if not exist_c:
                 channel = None
-            elif self.metadata.is_8bit:
-                # DIFFERENCE FROM REFERENCE
-                # In reference, the "Raw" variable contains i16 scaled data,
-                # and Detector{A,B,C,D} contains the raw u8 data.
-                # That's probably wrong?? As 16-bit data is the other way round.
-                factor = (
-                    self.metadata.scan_rate / scaling_c[0] / scaling_c[2] / scaling_c[3]
-                )
-                scaled = (raw_c.astype("float32") * factor + scaling_c[1]).astype(
-                    "int16"
-                )
+            elif calib is None:
+                if self.metadata.is_8bit:
+                    factor = (
+                        self.metadata.scan_rate / scaling_c[0] / scaling_c[2] / scaling_c[3]
+                    )
+                    scaled = (raw_c.astype("float32") * factor + scaling_c[1]).astype(
+                        "int16"
+                    )
+                else:
+                    scaled = (raw_c.astype("float32") - scaling_c[1]) * scaling_c[2]
                 channel = Channel(names_c, raw_c, scaled)
             else:
-                scaled = (raw_c.astype("float32") - scaling_c[1]) * scaling_c[2]
+                interp = interp1d(
+                    calibration[0], calibration[1],
+                    "cubic", fill_value="extrapolate"
+                )
+                scaled = interp(self.data[raw_slice].astype("float32")).astype("uint16")
                 channel = Channel(names_c, raw_c, scaled)
             out.append(channel)
 
         return out
+
+
+def i16_to_u16(array: np.ndarray):
+    if array.dtype != np.dtype("int16"):
+        logger.warning("Array does not seem to be of type int16. Trying to convert anyway.")
+    return (array.astype("float32") + HALF_I16_MAX_UP).astype("uint16")
 
 
 @dataclass

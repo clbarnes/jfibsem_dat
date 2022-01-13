@@ -53,6 +53,7 @@ def view_single(fpath, channel, raw):
     ax.set_title(f"{fpath}\n{name}")
     pos = ax.imshow(arr, cmap=CMAP)
     sc = ScaleBar(meta.pixel_size, "nm")
+    logger.warning("Scale may be incorrect by factor of 2.54e7")
     ax.add_artist(sc)
     ax.set_xlabel("x (px)")
     ax.set_ylabel("y (px)")
@@ -91,7 +92,7 @@ def expand_paths(paths):
 
 def datview(args=None):
     parser = ArgumentParser()
-    parser.add_argument("file", type=Path, help=".dat file(s) to view")
+    parser.add_argument("file", type=Path, help=".dat file to view")
     # parser.add_argument("file", nargs="*", type=Path, help=".dat file(s) to view")
     parser.add_argument(
         "-c",
