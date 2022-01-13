@@ -282,7 +282,7 @@ class MetadataV8:
         return self.channel_length() * self.n_channels
 
     def data_shape(self) -> tp.Tuple[int, int, int]:
-        return (self.n_channels, ) + tuple(self.resolution_xy)
+        return (self.n_channels,) + tuple(self.resolution_xy)
 
     def channel_length(self):
         return np.product(self.resolution_xy.astype(int))
@@ -306,11 +306,16 @@ def infer_dtype(is_8bit, byte_order=DEFAULT_BYTE_ORDER):
     return np.dtype("uint8" if is_8bit else "int16").newbyteorder(byte_order)
 
 
-def raw_read(f: tp.Union[Path, str, io.IOBase], shape: tp.Tuple[int, int, int], is_8bit: bool = False) -> np.ndarray:
+def raw_read(
+    f: tp.Union[Path, str, io.IOBase],
+    shape: tp.Tuple[int, int, int],
+    is_8bit: bool = False,
+) -> np.ndarray:
     """Read the array directly.
 
     The array is returned in non-python order (for each channel, X is the first axis).
-    You may want to do `raw_read(...).transpose((0, 2, 1))` to play nice with python tools like matplotlib.
+    You may want to do `raw_read(...).transpose((0, 2, 1))`
+    to play nice with python tools like matplotlib.
 
     Parameters
     ----------
@@ -344,10 +349,15 @@ def raw_read(f: tp.Union[Path, str, io.IOBase], shape: tp.Tuple[int, int, int], 
     )
 
 
-def raw_memmap(f: tp.Union[Path, str, io.IOBase], shape: tp.Tuple[int, int, int], is_8bit: bool = False) -> np.memmap:
+def raw_memmap(
+    f: tp.Union[Path, str, io.IOBase],
+    shape: tp.Tuple[int, int, int],
+    is_8bit: bool = False,
+) -> np.memmap:
     """Memory-map the array directly.
 
-    Like the numpy.memmap function, this does not handle closing the underlying file object.
+    Like the numpy.memmap function,
+    this does not handle closing the underlying file object.
     If you want to ensure the file is closed in a tidy fashion, use
 
     ```
@@ -356,7 +366,8 @@ def raw_memmap(f: tp.Union[Path, str, io.IOBase], shape: tp.Tuple[int, int, int]
     ```
 
     The array is returned in non-python order (for each channel, X is the first axis).
-    You may want to do `raw_memmap(...).transpose((0, 2, 1))` to play nice with python tools like matplotlib.
+    You may want to do `raw_memmap(...).transpose((0, 2, 1))`
+    to play nice with python tools like matplotlib.
 
     Parameters
     ----------
@@ -372,18 +383,14 @@ def raw_memmap(f: tp.Union[Path, str, io.IOBase], shape: tp.Tuple[int, int, int]
     np.memmap
     """
     dtype = infer_dtype(is_8bit)
-    return np.memmap(
-        f, dtype, "r", HEADER_LENGTH, shape, DEFAULT_AXIS_ORDER
-    )
+    return np.memmap(f, dtype, "r", HEADER_LENGTH, shape, DEFAULT_AXIS_ORDER)
 
 
 class RawFibsemData:
     MAGIC_NUM = 3_555_587_570
     HEADER_LENGTH = HEADER_LENGTH
 
-    def __init__(
-        self, metadata: MetadataV8, data: np.ndarray, file_handle=None
-    ):
+    def __init__(self, metadata: MetadataV8, data: np.ndarray, file_handle=None):
         self.metadata = metadata
         self.data = data
         self._file_handle = file_handle
