@@ -1,3 +1,4 @@
+import json
 import logging
 import typing as tp
 from argparse import ArgumentParser
@@ -12,7 +13,10 @@ CMAP = "gray_r"
 
 
 def get_array(
-    fpath, channel: tp.Optional[int], raw: bool
+    fpath,
+    channel: tp.Optional[int],
+    raw: bool = False,
+    calibration_path: Path = None,
 ) -> tp.Tuple[np.ndarray, MetadataV8, int]:
     logging.basicConfig(level=logging.INFO)
     logger.info("Attempting to memmap %s", fpath)
@@ -30,20 +34,27 @@ def get_array(
         logger.info("Using raw data")
         arr = dat.data[meta.channel_to_idx(channel)]
     else:
+        kwargs = {}
+        if calibration_path is not None:
+            kwargs["calibration"] = [
+                np.genfromtxt(
+                    calibration_path, "float32", delimiter=",", autostrip=True
+                ).T
+            ]
         logger.info("Scaling data")
-        channel_data = dat.scale([channel])[0]
+        channel_data = dat.scale([channel], **kwargs)[0]
         arr = channel_data.electron_counts
 
     return arr, meta, channel
 
 
-def view_single(fpath, channel, raw):
+def view_single(fpath, channel, raw=False, calibration_path=None):
     from matplotlib import pyplot as plt
     from matplotlib.axes import Axes
     from matplotlib.figure import Figure
     from matplotlib_scalebar.scalebar import ScaleBar
 
-    arr, meta, channel = get_array(fpath, channel, raw)
+    arr, meta, channel = get_array(fpath, channel, raw, calibration_path)
     name = meta.detector_names[channel]
 
     logger.info("Displaying")
@@ -100,6 +111,12 @@ def datview(args=None):
         help="Which channel to view (default first). Not all channels exist.",
     )
     parser.add_argument(
+        "-C",
+        "--calibration",
+        type=Path,
+        help="CSV file calibrating raw to scaled values",
+    )
+    parser.add_argument(
         "-r",
         "--raw",
         action="store_true",
@@ -111,14 +128,19 @@ def datview(args=None):
     if len(fpaths) == 0:
         logger.info("No .dat files given")
     elif len(fpaths) == 1:
-        view_single(fpaths[0], parsed.channel, parsed.raw)
+        view_single(fpaths[0], parsed.channel, parsed.raw, parsed.calibration)
     else:
         raise ValueError("Only 1 dat file can be viewed")
         # view_multi(fpaths, parsed.channel, parsed.raw)
 
 
-def dathead(args=None):
-    parser = ArgumentParser()
+def dathead(parsed=None):
+    parser = ArgumentParser(
+        description=(
+            "Retrieve metadata from the header of a Janelia FIBSEM .dat file, "
+            "in JSON format."
+        ),
+    )
     parser.add_argument("file", help=".dat file to read headers for")
     parser.add_argument(
         "-c",
@@ -126,11 +148,33 @@ def dathead(args=None):
         action="store_true",
         help="Print a single line of JSON, rather than pretty-printing it.",
     )
-    args = parser.parse_args(args)
-    meta = MetadataV8.from_filepath(args.file)
-    if args.compact:
-        kwargs = dict(separators=(",", ":"))
-    else:
-        kwargs = dict(indent=2, sort_keys=True)
+    parser.add_argument(
+        "-k",
+        "--key",
+        action="append",
+        help=(
+            "Read specific key(s), rather than the whole header. "
+            "If a single key is given, just the value is returned (as JSON); "
+            "if multiple are given, a JSON object is returned with keys and values."
+        ),
+    )
+    parsed = parser.parse_args(parsed)
+    meta = MetadataV8.from_filepath(parsed.file)
+    kwargs: tp.Dict[str, tp.Any] = {"sort_keys": True}
+    if not parsed.compact:
+        kwargs["indent"] = 2
 
-    print(meta.to_json(**kwargs))
+    if not parsed.keys:
+        print(meta.to_json(**kwargs))
+        return
+
+    jso = json.loads(meta.to_json())
+    if len(parsed.keys) == 1:
+        print(json.dumps(jso[parsed.keys[0]], **kwargs))
+    else:
+        reduced = {k: jso[k] for k in parsed.keys}
+        try:
+            del kwargs["sort_keys"]
+        except KeyError:
+            pass
+        print(json.dumps(reduced, **kwargs))
