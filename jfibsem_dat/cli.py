@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 
+from .calibrate import calibrate
 from .read import MetadataV8, RawFibsemData
 
 logger = logging.getLogger(__name__)
@@ -358,7 +359,7 @@ def datcalib(args=None):
         "--samples",
         type=int,
         default=100,
-        help="Number of samples in the calibration CSV",
+        help="Maximum number of samples in the calibration CSV",
     )
     parser.add_argument(
         "-V",
@@ -375,23 +376,11 @@ def datcalib(args=None):
     for op in parsed.operation:
         out = op(out)
 
-    x = arr.ravel()
-    sort_idxs = np.argsort(x)
-    x = x[sort_idxs]
-    y = out.ravel()[sort_idxs]
-    y_samples = np.quantile(
-        y,
-        np.linspace(0, 1, parsed.samples, True),
-        **{interp_method_name(): "closest_observation"},
-    )
+    xs, ys = calibrate(arr, out, parsed.samples)
     u16_max = np.iinfo("uint16").max
-    visited_x = set()
-    for y_sample in y_samples:
-        x_sample = x[y == y_sample][0]
-        if x_sample in visited_x:
-            continue
-        print(f"{x_sample},{y_sample * u16_max}")
-        visited_x.add(x_sample)
+    ys = (ys * u16_max).astype("uint16")
+    for x, y in zip(xs, ys):
+        print(f"{x},{y}")
 
     if parsed.view:
         pixel_size = meta.pixel_size
