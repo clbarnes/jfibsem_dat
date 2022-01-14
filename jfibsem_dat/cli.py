@@ -171,15 +171,15 @@ def dathead(args=None):
     if parsed.pretty:
         kwargs["indent"] = 2
 
-    if not parsed.keys:
+    if not parsed.key:
         print(meta.to_json(**kwargs))
         return
 
     jso = json.loads(meta.to_json())
-    if len(parsed.keys) == 1:
-        print(json.dumps(jso[parsed.keys[0]], **kwargs))
+    if len(parsed.key) == 1:
+        print(json.dumps(jso[parsed.key[0]], **kwargs))
     else:
-        reduced = {k: jso[k] for k in parsed.keys}
+        reduced = {k: jso[k] for k in parsed.key}
         try:
             del kwargs["sort_keys"]
         except KeyError:

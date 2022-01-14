@@ -83,14 +83,8 @@ class FileType(IntEnum):
 
 class MetadataEncoder(json.JSONEncoder):
     def default(self, o: tp.Any) -> tp.Any:
-        if isinstance(o, np.ndarray):
+        if hasattr(o, "dtype") and hasattr(o, "tolist"):
             return o.tolist()
-        elif isinstance(o, np.integer):
-            return int(o)
-        elif isinstance(o, np.floating):
-            return float(o)
-        elif isinstance(o, np.bool_):
-            return bool(o)
         elif isinstance(o, dt.date):
             return o.isoformat()
         return super().default(o)
