@@ -13,7 +13,13 @@ setup(
     long_description=readme,
     long_description_content_type="text/markdown",
     packages=find_packages(include=["jfibsem_dat"]),
-    install_requires=["numpy", "matplotlib", "matplotlib_scalebar", "scipy"],
+    install_requires=[
+        "numpy",
+        "matplotlib",
+        "matplotlib_scalebar",
+        "scipy",
+        "scikit-image",
+    ],
     python_requires=">=3.8, <4.0",
     classifiers=[
         "Development Status :: 3 - Alpha",

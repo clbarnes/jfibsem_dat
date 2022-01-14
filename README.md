@@ -60,3 +60,7 @@ optional arguments:
                      JSON); if multiple are given, a JSON object is returned
                      with keys and values.
 ```
+
+## Format notes
+
+- Field `sw_date` encodes a date as a string of form `DD/MM/YYYY`

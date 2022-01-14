@@ -570,7 +570,7 @@ def read_from_bytes(
         date_bytes = read_from_bytes(b, bytes, index, 10, fill=fill)
         date_str = date_bytes.decode("utf-8")
         # todo: check day/month order
-        datetime = dt.datetime.strptime(date_str, "%m/%d/%Y")
+        datetime = dt.datetime.strptime(date_str, "%d/%m/%Y")
         return datetime.date()
     # elif dtype == dt.datetime:
     #     rd = read_from_bytes(b, bytes, index, size, fill=fill)

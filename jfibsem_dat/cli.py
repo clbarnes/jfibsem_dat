@@ -16,7 +16,8 @@ def get_array(
     fpath,
     channel: tp.Optional[int],
     raw: bool = False,
-    calibration_path: Path = None,
+    calibration_path: tp.Optional[Path] = None,
+    downsample: tp.Optional[int] = None,
 ) -> tp.Tuple[np.ndarray, MetadataV8, int]:
     logging.basicConfig(level=logging.INFO)
     logger.info("Attempting to memmap %s", fpath)
@@ -30,9 +31,20 @@ def get_array(
     if idx is None:
         raise ValueError(f"Channel {channel} does not exist")
 
+    if downsample is not None:
+        from skimage.transform import downscale_local_mean
+
+        logger.info("Downsampling by factor %s", downsample)
+        raw_vals = dat.data[idx].copy()
+        shrunk = downscale_local_mean(raw_vals, downsample).astype(raw_vals.dtype)
+        new_channels = [np.empty_like(shrunk)] * meta.n_channels
+        new_channels[idx] = shrunk
+        dat.data = np.array(new_channels)
+        meta.pixel_size *= downsample
+
     if raw:
         logger.info("Using raw data")
-        arr = dat.data[meta.channel_to_idx(channel)]
+        arr = dat.data[idx]
     else:
         kwargs = {}
         if calibration_path is not None:
@@ -41,20 +53,27 @@ def get_array(
                     calibration_path, "float32", delimiter=",", autostrip=True
                 ).T
             ]
-        logger.info("Scaling data")
+        logger.info("Scaling pixel values")
         channel_data = dat.scale([channel], **kwargs)[0]
         arr = channel_data.electron_counts
 
+    dat.close()
     return arr, meta, channel
 
 
-def view_single(fpath, channel, raw=False, calibration_path=None):
+def view_single(
+    fpath,
+    channel,
+    raw=False,
+    calibration_path=None,
+    downsample: tp.Optional[int] = None,
+):
     from matplotlib import pyplot as plt
     from matplotlib.axes import Axes
     from matplotlib.figure import Figure
     from matplotlib_scalebar.scalebar import ScaleBar
 
-    arr, meta, channel = get_array(fpath, channel, raw, calibration_path)
+    arr, meta, channel = get_array(fpath, channel, raw, calibration_path, downsample)
     name = meta.detector_names[channel]
 
     logger.info("Displaying")
@@ -63,7 +82,7 @@ def view_single(fpath, channel, raw=False, calibration_path=None):
     ax.set_title(f"{fpath}\n{name}")
     pos = ax.imshow(arr, cmap=CMAP)
     sc = ScaleBar(meta.pixel_size, "nm")
-    logger.warning("Scale may be incorrect by factor of 2.54e7")
+    logger.warning("Resolution may be incorrect by factor of 2.54e7")
     ax.add_artist(sc)
     ax.set_xlabel("x (px)")
     ax.set_ylabel("y (px)")
@@ -72,6 +91,10 @@ def view_single(fpath, channel, raw=False, calibration_path=None):
 
 
 def expand_paths(paths):
+    if isinstance(paths, str) or not hasattr(paths, "__iter__"):
+        yield paths
+        return
+
     for path in paths:
         if path.is_file():
             yield path
@@ -124,6 +147,12 @@ def datview(args=None):
         help="CSV file calibrating raw to scaled values",
     )
     parser.add_argument(
+        "-d",
+        "--downsample",
+        type=int,
+        help="Downsample the image; good for quicker viewing.",
+    )
+    parser.add_argument(
         "-r",
         "--raw",
         action="store_true",
@@ -135,7 +164,9 @@ def datview(args=None):
     if len(fpaths) == 0:
         logger.info("No .dat files given")
     elif len(fpaths) == 1:
-        view_single(fpaths[0], parsed.channel, parsed.raw, parsed.calibration)
+        view_single(
+            fpaths[0], parsed.channel, parsed.raw, parsed.calibration, parsed.downsample
+        )
     else:
         raise ValueError("Only 1 dat file can be viewed")
         # view_multi(fpaths, parsed.channel, parsed.raw)
