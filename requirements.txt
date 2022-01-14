@@ -10,6 +10,7 @@ flake8
 isort
 mypy
 pdoc3
+pipe2codeblock
 pytest
 setuptools-scm
 setuptools

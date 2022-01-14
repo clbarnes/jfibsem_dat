@@ -31,3 +31,8 @@ clean-docs:
 docs: clean-docs
 	mkdir -p docs \
 	&& pdoc --html --output-dir docs fibsemtools
+
+.PHONY: readme
+readme:
+	dathead --help | p2c --tgt _dathead README.md \
+	&& datview --help | p2c --tgt _datview README.md

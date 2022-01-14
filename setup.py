@@ -6,7 +6,7 @@ with open(Path(__file__).resolve().parent / "README.md") as f:
     readme = f.read()
 
 setup(
-    name="fibsemtools",
+    name="jfibsem_dat",
     url="https://github.com/clbarnes/jfibsem_dat",
     author="Chris L. Barnes",
     description="",
@@ -27,8 +27,8 @@ setup(
     setup_requires=["setuptools_scm"],
     entry_points={
         "console_scripts": [
-            "datview=fibsemtools.cli:datview",
-            "dathead=fibsemtools.cli:dathead",
+            "datview=jfibsem_dat.cli:datview",
+            "dathead=jfibsem_dat.cli:dathead",
         ]
     },
 )

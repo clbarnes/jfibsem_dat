@@ -101,7 +101,14 @@ def expand_paths(paths):
 
 
 def datview(args=None):
-    parser = ArgumentParser()
+    parser = ArgumentParser(
+        description=(
+            "View a Janelia FIBSEM .dat file. "
+            "The data can be scaled using the file's metadata, "
+            "viewed --raw, or scaled using a --calibration CSV. "
+            "Uses matplotlib."
+        )
+    )
     parser.add_argument("file", type=Path, help=".dat file to view")
     # parser.add_argument("file", nargs="*", type=Path, help=".dat file(s) to view")
     parser.add_argument(
@@ -134,7 +141,7 @@ def datview(args=None):
         # view_multi(fpaths, parsed.channel, parsed.raw)
 
 
-def dathead(parsed=None):
+def dathead(args=None):
     parser = ArgumentParser(
         description=(
             "Retrieve metadata from the header of a Janelia FIBSEM .dat file, "
@@ -143,10 +150,10 @@ def dathead(parsed=None):
     )
     parser.add_argument("file", help=".dat file to read headers for")
     parser.add_argument(
-        "-c",
-        "--compact",
+        "-p",
+        "--pretty",
         action="store_true",
-        help="Print a single line of JSON, rather than pretty-printing it.",
+        help="Pretty-printing the JSON.",
     )
     parser.add_argument(
         "-k",
@@ -158,10 +165,10 @@ def dathead(parsed=None):
             "if multiple are given, a JSON object is returned with keys and values."
         ),
     )
-    parsed = parser.parse_args(parsed)
+    parsed = parser.parse_args(args)
     meta = MetadataV8.from_filepath(parsed.file)
     kwargs: tp.Dict[str, tp.Any] = {"sort_keys": True}
-    if not parsed.compact:
+    if parsed.pretty:
         kwargs["indent"] = 2
 
     if not parsed.keys:
