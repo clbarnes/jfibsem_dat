@@ -21,7 +21,7 @@ pip install git+https://github.com/clbarnes/jfibsem_dat.git
 ### `datview`
 
 ```_datview
-usage: datview [-h] [-c CHANNEL] [-C CALIBRATION] [-r] file
+usage: datview [-h] [-c CHANNEL] [-C CALIBRATION] [-d DOWNSAMPLE] [-r] file
 
 View a Janelia FIBSEM .dat file. The data can be scaled using the file's
 metadata, viewed --raw, or scaled using a --calibration CSV. Uses matplotlib.
@@ -36,10 +36,10 @@ optional arguments:
                         channels exist.
   -C CALIBRATION, --calibration CALIBRATION
                         CSV file calibrating raw to scaled values
+  -d DOWNSAMPLE, --downsample DOWNSAMPLE
+                        Downsample the image; good for quicker viewing.
   -r, --raw             Show raw data rather than scaled electron counts.
 ```
-
-Uses matplotlib.
 
 ### `dathead`
 
@@ -59,6 +59,64 @@ optional arguments:
                      single key is given, just the value is returned (as
                      JSON); if multiple are given, a JSON object is returned
                      with keys and values.
+```
+
+### `dathist`
+
+```_dathist
+usage: dathist [-h] [-c CHANNEL] [-C CALIBRATION] [-d DOWNSAMPLE] [-r] file
+
+View the histogram of pixel values for one channel of Janelia FIBSEM .dat file
+
+positional arguments:
+  file                  .dat file to view
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -c CHANNEL, --channel CHANNEL
+                        Which channel to view (default first). Not all
+                        channels exist.
+  -C CALIBRATION, --calibration CALIBRATION
+                        CSV file calibrating raw to scaled values
+  -d DOWNSAMPLE, --downsample DOWNSAMPLE
+                        Downsample the image; good for quicker viewing.
+  -r, --raw             Show raw data rather than scaled electron counts.
+```
+
+### `datcalib`
+
+```_datcalib
+usage: datcalib [-h] [-c CHANNEL] [-C CALIBRATION] [-d DOWNSAMPLE] [-r]
+                [-s SAMPLES] [-V]
+                file operation [operation ...]
+
+Produce a calibration CSV for some simple exposure corrections
+
+positional arguments:
+  file                  .dat file to view
+  operation             Calibration functions to apply. Multiple functions can
+                        be given, and will be applied in order. Given in the
+                        form '{{name}},{{kwarg1_name}}={{kwarg1_value}},...'.
+                        Values given in JSON format (e.g. 'null' instead of
+                        'None'), although uncontained strings do not need
+                        quoting. Functions are documented in scikit-image's
+                        exposure package. Accepted functions are:
+                        adjust_gamma, adjust_log, adjust_sigmoid,
+                        equalize_hist, rescale_intensity
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -c CHANNEL, --channel CHANNEL
+                        Which channel to view (default first). Not all
+                        channels exist.
+  -C CALIBRATION, --calibration CALIBRATION
+                        CSV file calibrating raw to scaled values
+  -d DOWNSAMPLE, --downsample DOWNSAMPLE
+                        Downsample the image; good for quicker viewing.
+  -r, --raw             Show raw data rather than scaled electron counts.
+  -s SAMPLES, --samples SAMPLES
+                        Number of samples in the calibration CSV
+  -V, --view            Whether to show the calibrated result
 ```
 
 ## Format notes

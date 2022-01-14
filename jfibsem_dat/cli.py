@@ -61,6 +61,28 @@ def get_array(
     return arr, meta, channel
 
 
+def view_array(array, title=None, pixel_size=None):
+    from matplotlib import pyplot as plt
+    from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
+    from matplotlib_scalebar.scalebar import ScaleBar
+
+    logger.info("Displaying")
+    fig: Figure = plt.figure()
+    ax: Axes = fig.add_subplot()
+    if title:
+        ax.set_title(title)
+    pos = ax.imshow(array, cmap=CMAP)
+    if pixel_size:
+        sc = ScaleBar(pixel_size, "nm")
+        logger.warning("Resolution may be incorrect by factor of 2.54e7")
+        ax.add_artist(sc)
+    ax.set_xlabel("x (px)")
+    ax.set_ylabel("y (px)")
+    fig.colorbar(pos, ax=ax)
+    plt.show()
+
+
 def view_single(
     fpath,
     channel,
@@ -68,26 +90,10 @@ def view_single(
     calibration_path=None,
     downsample: tp.Optional[int] = None,
 ):
-    from matplotlib import pyplot as plt
-    from matplotlib.axes import Axes
-    from matplotlib.figure import Figure
-    from matplotlib_scalebar.scalebar import ScaleBar
-
     arr, meta, channel = get_array(fpath, channel, raw, calibration_path, downsample)
     name = meta.detector_names[channel]
 
-    logger.info("Displaying")
-    fig: Figure = plt.figure()
-    ax: Axes = fig.add_subplot()
-    ax.set_title(f"{fpath}\n{name}")
-    pos = ax.imshow(arr, cmap=CMAP)
-    sc = ScaleBar(meta.pixel_size, "nm")
-    logger.warning("Resolution may be incorrect by factor of 2.54e7")
-    ax.add_artist(sc)
-    ax.set_xlabel("x (px)")
-    ax.set_ylabel("y (px)")
-    fig.colorbar(pos, ax=ax)
-    plt.show()
+    view_array(arr, f"{fpath}\n{name}", meta.pixel_size)
 
 
 def expand_paths(paths):
@@ -123,6 +129,40 @@ def expand_paths(paths):
 #     viewer = napari.view_image(combined)
 
 
+def add_array_args(
+    parser: ArgumentParser, channel=True, calibration=True, downsample=True, raw=True
+):
+    if channel:
+        parser.add_argument(
+            "-c",
+            "--channel",
+            type=int,
+            help="Which channel to view (default first). Not all channels exist.",
+        )
+    if calibration:
+        parser.add_argument(
+            "-C",
+            "--calibration",
+            type=Path,
+            help="CSV file calibrating raw to scaled values",
+        )
+    if downsample:
+        parser.add_argument(
+            "-d",
+            "--downsample",
+            type=int,
+            help="Downsample the image; good for quicker viewing.",
+        )
+    if raw:
+        parser.add_argument(
+            "-r",
+            "--raw",
+            action="store_true",
+            help="Show raw data rather than scaled electron counts.",
+        )
+    return parser
+
+
 def datview(args=None):
     parser = ArgumentParser(
         description=(
@@ -134,30 +174,7 @@ def datview(args=None):
     )
     parser.add_argument("file", type=Path, help=".dat file to view")
     # parser.add_argument("file", nargs="*", type=Path, help=".dat file(s) to view")
-    parser.add_argument(
-        "-c",
-        "--channel",
-        type=int,
-        help="Which channel to view (default first). Not all channels exist.",
-    )
-    parser.add_argument(
-        "-C",
-        "--calibration",
-        type=Path,
-        help="CSV file calibrating raw to scaled values",
-    )
-    parser.add_argument(
-        "-d",
-        "--downsample",
-        type=int,
-        help="Downsample the image; good for quicker viewing.",
-    )
-    parser.add_argument(
-        "-r",
-        "--raw",
-        action="store_true",
-        help="Show raw data rather than scaled electron counts.",
-    )
+    add_array_args(parser)
     parsed = parser.parse_args(args)
 
     fpaths = list(expand_paths(parsed.file))
@@ -216,3 +233,168 @@ def dathead(args=None):
         except KeyError:
             pass
         print(json.dumps(reduced, **kwargs))
+
+
+def dathist(args=None):
+    from matplotlib import pyplot as plt
+    from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
+
+    parser = ArgumentParser(
+        description=(
+            "View the histogram of pixel values "
+            "for one channel of Janelia FIBSEM .dat file"
+        ),
+    )
+    parser.add_argument("file", type=Path, help=".dat file to view")
+    # parser.add_argument("file", nargs="*", type=Path, help=".dat file(s) to view")
+    add_array_args(parser)
+    parsed = parser.parse_args(args)
+    arr, _, _ = get_array(
+        parsed.file, parsed.channel, parsed.raw, parsed.calibration, parsed.downsample
+    )
+
+    logger.info("Binning and displaying")
+    fig: Figure = plt.figure()
+    ax: Axes = fig.add_subplot()
+    ax.hist(arr.ravel(), bins=256)
+    ax.set_title(f"Histogram for {parsed.file}")
+    ax.set_xlabel("intensity")
+    ax.set_ylabel("frequency")
+
+    plt.show()
+
+
+def parse_value(s):
+    if s == "" or s == "None":
+        return None
+    if s == "True":
+        return True
+    if s == "False":
+        return False
+
+    try:
+        out = float(s)
+    except TypeError:
+        return s
+    as_int = int(out)
+    if as_int == out:
+        return as_int
+    return out
+
+
+class OpParser:
+    def __init__(self) -> None:
+        from skimage import exposure as exp
+
+        self.funcs = {
+            fn.__name__: fn
+            for fn in [
+                exp.adjust_gamma,
+                exp.adjust_log,
+                exp.adjust_sigmoid,
+                exp.equalize_hist,
+                exp.rescale_intensity,
+            ]
+        }
+
+    def parse(self, s: str):
+        s = "".join(s.split())
+        name, *args = s.split(",")
+        kwargs = {}
+        for arg in args:
+            k, v = arg.split("=")
+            try:
+                kwargs[k] = json.loads(v)
+            except json.JSONDecodeError:
+                kwargs[k] = v
+
+        fn = self.funcs[name]
+
+        def func(img):
+            logger.info("Applying %s", s)
+            return fn(img, **kwargs)
+
+        return func
+
+
+def parse_version(s):
+    return tuple(int(n) for n in s.split("."))
+
+
+def interp_method_name():
+    """This changed in numpy 1.22"""
+    if parse_version(np.__version__) < (1, 22):
+        return "interpolation"
+    return "method"
+
+
+def datcalib(args=None):
+    from skimage import exposure as exp
+
+    parser = ArgumentParser(
+        description=("Produce a calibration CSV for some simple exposure corrections"),
+    )
+    parser.add_argument("file", type=Path, help=".dat file to view")
+    # parser.add_argument("file", nargs="*", type=Path, help=".dat file(s) to view")
+    add_array_args(parser, channel=True, downsample=True)
+    op_parser = OpParser()
+    parser.add_argument(
+        "operation",
+        type=op_parser.parse,
+        nargs="+",
+        help=(
+            "Calibration functions to apply. "
+            "Multiple functions can be given, and will be applied in order. "
+            "Given in the form '{{name}},{{kwarg1_name}}={{kwarg1_value}},...'. "
+            "Values given in JSON format (e.g. 'null' instead of 'None'), "
+            "although uncontained strings do not need quoting. "
+            "Functions are documented in scikit-image's exposure package. "
+            f"Accepted functions are: {', '.join(op_parser.funcs)}"
+        ),
+    )
+    parser.add_argument(
+        "-s",
+        "--samples",
+        type=int,
+        default=100,
+        help="Number of samples in the calibration CSV",
+    )
+    parser.add_argument(
+        "-V",
+        "--view",
+        action="store_true",
+        help="Whether to show the calibrated result",
+    )
+    parsed = parser.parse_args(args)
+
+    arr, meta, _ = get_array(
+        parsed.file, parsed.channel, True, downsample=parsed.downsample
+    )
+    out = exp.rescale_intensity(arr.astype("float32"), out_range=(0, 1))
+    for op in parsed.operation:
+        out = op(out)
+
+    x = arr.ravel()
+    sort_idxs = np.argsort(x)
+    x = x[sort_idxs]
+    y = out.ravel()[sort_idxs]
+    y_samples = np.quantile(
+        y,
+        np.linspace(0, 1, parsed.samples, True),
+        **{interp_method_name(): "closest_observation"},
+    )
+    u16_max = np.iinfo("uint16").max
+    visited_x = set()
+    for y_sample in y_samples:
+        x_sample = x[y == y_sample][0]
+        if x_sample in visited_x:
+            continue
+        print(f"{x_sample},{y_sample * u16_max}")
+        visited_x.add(x_sample)
+
+    if parsed.view:
+        pixel_size = meta.pixel_size
+        if parsed.downsample:
+            pixel_size *= parsed.downsample
+        view_array(out, str(parsed.file), meta.pixel_size)

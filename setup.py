@@ -35,6 +35,8 @@ setup(
         "console_scripts": [
             "datview=jfibsem_dat.cli:datview",
             "dathead=jfibsem_dat.cli:dathead",
+            "dathist=jfibsem_dat.cli:dathist",
+            "datcalib=jfibsem_dat.cli:datcalib",
         ]
     },
 )

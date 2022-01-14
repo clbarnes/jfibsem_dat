@@ -499,10 +499,8 @@ class RawFibsemData:
                     scaled = (raw_c.astype("float32") - scaling_c[1]) * scaling_c[2]
                 channel = Channel(names_c, raw_c, scaled)
             else:
-                interp = interp1d(
-                    calibration[0], calibration[1], "cubic", fill_value="extrapolate"
-                )
-                scaled = interp(self.data[raw_slice].astype("float32")).astype("uint16")
+                interp = interp1d(calib[0], calib[1], "cubic", fill_value="extrapolate")
+                scaled = interp(raw_c.astype("float32")).astype("uint16")
                 channel = Channel(names_c, raw_c, scaled)
             out.append(channel)
 

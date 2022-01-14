@@ -35,4 +35,6 @@ docs: clean-docs
 .PHONY: readme
 readme:
 	dathead --help | p2c --tgt _dathead README.md \
-	&& datview --help | p2c --tgt _datview README.md
+	&& datview --help | p2c --tgt _datview README.md \
+	&& dathist --help | p2c --tgt _dathist README.md \
+	&& datcalib --help | p2c --tgt _datcalib README.md
