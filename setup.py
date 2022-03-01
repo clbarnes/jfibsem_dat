@@ -19,11 +19,9 @@ setup(
     packages=find_packages(include=["jfibsem_dat"]),
     install_requires=[
         "numpy>=1.22",
-        "matplotlib",
-        "matplotlib_scalebar",
         "scipy",
-        "scikit-image",
     ],
+    extras_require=extras,
     python_requires=">=3.8, <4.0",
     classifiers=[
         "Development Status :: 3 - Alpha",

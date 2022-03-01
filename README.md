@@ -12,11 +12,17 @@ This project currently supports v8 of the image specification.
 
 ## Installation
 
-From github:
+Basic installation from github:
 
 ```sh
-pip install git+https://github.com/clbarnes/jfibsem_dat.git
+pip install 'git+https://github.com/clbarnes/jfibsem_dat.git[all]'
 ```
+
+This package contains a number of extras:
+
+- `vis` contains dependencies used for viewing images
+- `skimage` contains dependencies for downsampling images
+- `all` contains all of the above
 
 ## Utilities
 
