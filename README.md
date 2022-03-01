@@ -9,13 +9,15 @@ The repo was unmaintained when these copies were made, and so may contain errors
 There is a FIJI implementation here: https://github.com/fiji/IO/blob/master/src/main/java/sc/fiji/io/FIBSEM_Reader.java
 
 This project currently supports v8 of the image specification.
+The tests download a publicly-accessible example v8 FIBSEM image,
+kindly provided by Ana Correia da Silva and Marc Corrales at the MRC Laboratory of Molecular Biology.
 
 ## Installation
 
-Basic installation from github:
+Batteries-included installation:
 
 ```sh
-pip install 'git+https://github.com/clbarnes/jfibsem_dat.git[all]'
+pip install 'jfibsem_dat[all]'
 ```
 
 This package contains a number of extras:

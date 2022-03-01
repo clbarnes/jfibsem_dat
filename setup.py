@@ -13,7 +13,7 @@ setup(
     name="jfibsem_dat",
     url="https://github.com/clbarnes/jfibsem_dat",
     author="Chris L. Barnes",
-    description="",
+    description="FIBSEM .dat file implementation and tools",
     long_description=readme,
     long_description_content_type="text/markdown",
     packages=find_packages(include=["jfibsem_dat"]),
