@@ -347,7 +347,7 @@ def datcalib(args=None):
         help=(
             "Calibration functions to apply. "
             "Multiple functions can be given, and will be applied in order. "
-            "Given in the form '{{name}},{{kwarg1_name}}={{kwarg1_value}},...'. "
+            "Given in the form 'fn_name,kwarg1_name=kwarg1_value,...'. "
             "Values given in JSON format (e.g. 'null' instead of 'None'), "
             "although uncontained strings do not need quoting. "
             "Functions are documented in scikit-image's exposure package. "

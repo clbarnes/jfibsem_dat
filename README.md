@@ -8,6 +8,8 @@ The repo was unmaintained when these copies were made, and so may contain errors
 
 There is a FIJI implementation here: https://github.com/fiji/IO/blob/master/src/main/java/sc/fiji/io/FIBSEM_Reader.java
 
+This project currently supports v8 of the image specification.
+
 ## Installation
 
 From github:
@@ -96,13 +98,13 @@ positional arguments:
   file                  .dat file to view
   operation             Calibration functions to apply. Multiple functions can
                         be given, and will be applied in order. Given in the
-                        form '{{name}},{{kwarg1_name}}={{kwarg1_value}},...'.
-                        Values given in JSON format (e.g. 'null' instead of
-                        'None'), although uncontained strings do not need
-                        quoting. Functions are documented in scikit-image's
-                        exposure package. Accepted functions are:
-                        adjust_gamma, adjust_log, adjust_sigmoid,
-                        equalize_hist, rescale_intensity
+                        form 'fn_name,kwarg1_name=kwarg1_value,...'. Values
+                        given in JSON format (e.g. 'null' instead of 'None'),
+                        although uncontained strings do not need quoting.
+                        Functions are documented in scikit-image's exposure
+                        package. Accepted functions are: adjust_gamma,
+                        adjust_log, adjust_sigmoid, equalize_hist,
+                        rescale_intensity
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -115,10 +117,11 @@ optional arguments:
                         Downsample the image; good for quicker viewing.
   -r, --raw             Show raw data rather than scaled electron counts.
   -s SAMPLES, --samples SAMPLES
-                        Number of samples in the calibration CSV
+                        Maximum number of samples in the calibration CSV
   -V, --view            Whether to show the calibrated result
 ```
 
 ## Format notes
 
 - Field `sw_date` encodes a date as a string of form `DD/MM/YYYY`
+- There are a number of unexplained constants and unanswered questions about the format/ its reference MATLAB implementation: grains of salt are a dependency of using this project.
