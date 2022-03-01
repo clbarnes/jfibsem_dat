@@ -57,10 +57,7 @@ def trunc_fake_path(fake_path):
 
 def fetch(url, fpath, blocksize=100_000_000):
     logger.warning("Downloading FIBSEM example (first time only) at %s", url)
-    with (
-        request.urlopen(url) as req,
-        open(fpath, "wb") as f,
-    ):
+    with request.urlopen(url) as req, open(fpath, "wb") as f:
         while True:
             b = req.read(blocksize)
             f.write(b)

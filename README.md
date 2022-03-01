@@ -129,6 +129,12 @@ optional arguments:
   -V, --view            Whether to show the calibrated result
 ```
 
+## Example FIBSEM files
+
+### v8
+
+- [Pygmy squid hatchling, 18214x14464](https://neurophyla.mrc-lmb.cam.ac.uk/share/fibsem_example/FIBdeSEMAna_21-12-26_005024_0-0-0.dat)
+
 ## Format notes
 
 - Field `sw_date` encodes a date as a string of form `DD/MM/YYYY`
