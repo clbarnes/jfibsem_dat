@@ -1,9 +1,13 @@
+from itertools import chain
 from pathlib import Path
 
 from setuptools import find_packages, setup
 
 with open(Path(__file__).resolve().parent / "README.md") as f:
     readme = f.read()
+
+extras = {"skimage": ["scikit-image"], "vis": ["matplotlib", "matplotlib_scalebar"]}
+extras["all"] = sorted(set(chain.from_iterable(extras.values())))
 
 setup(
     name="jfibsem_dat",
@@ -14,7 +18,7 @@ setup(
     long_description_content_type="text/markdown",
     packages=find_packages(include=["jfibsem_dat"]),
     install_requires=[
-        "numpy",
+        "numpy>=1.22",
         "matplotlib",
         "matplotlib_scalebar",
         "scipy",
