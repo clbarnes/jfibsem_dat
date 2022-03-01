@@ -39,6 +39,7 @@ setup(
             "dathead=jfibsem_dat.cli:dathead",
             "dathist=jfibsem_dat.cli:dathist",
             "datcalib=jfibsem_dat.cli:datcalib",
+            "datserve=jfibsem_dat.serve:main",
         ]
     },
 )
