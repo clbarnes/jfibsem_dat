@@ -6,7 +6,7 @@ import pytest
 
 TEST_DIR = Path(__file__).resolve().parent
 FIXTURE_DIR = TEST_DIR / "fixtures"
-BLOCKSIZE = 2 ** 20
+BLOCKSIZE = 2**20
 
 STEM = "Merlin-6281_19-08-09_120426_0-0-0"
 
