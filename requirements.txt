@@ -12,6 +12,7 @@ isort
 mypy
 pdoc3
 pipe2codeblock
+pre-commit
 pytest
 setuptools-scm
 setuptools

@@ -5,9 +5,10 @@ fmt:
 
 .PHONY: lint
 lint:
-	black --check .
-	isort --check .
-	flake8 .
+	pre-commit run --all
+	# black --check .
+	# isort --check .
+	# flake8 .
 	# mypy .
 
 .PHONY: test

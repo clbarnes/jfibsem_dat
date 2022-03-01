@@ -125,3 +125,13 @@ optional arguments:
 
 - Field `sw_date` encodes a date as a string of form `DD/MM/YYYY`
 - There are a number of unexplained constants and unanswered questions about the format/ its reference MATLAB implementation: grains of salt are a dependency of using this project.
+
+## Contributing
+
+Contributions are welcome!
+
+This project uses `black` and `isort` for formatting (run `make fmt`), and `pre-commit` for general code quality checks.
+
+Use `make fmt` for formatting and `make lint` for spot checks, and `pre-commit run --all` to run all hooks.
+
+If you modify any part of the CLI, use `make readme` to update the help text in the README.
