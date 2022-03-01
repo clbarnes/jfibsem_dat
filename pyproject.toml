@@ -7,12 +7,3 @@ write_to = "jfibsem_dat/version.py"
 [tool.isort]
 profile = "black"
 multi_line_output = 3
-
-[tool.pytest.ini_options]
-log_cli = "True"
-minversion = "6.0"
-# addopts = "-ra -q"
-# testpaths = [
-#     "tests",
-#     "integration",
-# ]

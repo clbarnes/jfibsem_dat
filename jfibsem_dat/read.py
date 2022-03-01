@@ -307,6 +307,9 @@ class MetadataV8:
     def to_json(self, **kwargs) -> str:
         return json.dumps(dc.asdict(self), cls=MetadataEncoder, **kwargs)
 
+    def dtype(self) -> np.dtype:
+        return infer_dtype(self.is_8bit)
+
 
 def infer_dtype(is_8bit, byte_order=DEFAULT_BYTE_ORDER):
     return np.dtype("uint8" if is_8bit else "int16").newbyteorder(byte_order)
@@ -532,10 +535,7 @@ def parse_metadata(header_bytes: bytes):
     if magic_num != MAGIC_NUM:
         raise ValueError("Incorrect magic number")
     version = read_from_bytes(header_bytes, "uint16", 4)
-    classes = {
-        8: MetadataV8,
-    }
-    cls = classes[version]
+    cls = METADATA_VERSIONS[version]
     return cls.from_bytes(header_bytes)
 
 
@@ -608,3 +608,8 @@ def read_from_bytes(
         return data
     else:
         return data.reshape(shape, order=axis_order)
+
+
+METADATA_VERSIONS = {
+    8: MetadataV8,
+}

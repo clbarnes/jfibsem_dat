@@ -134,6 +134,7 @@ optional arguments:
 ### v8
 
 - [Pygmy squid hatchling, 18214x14464](https://neurophyla.mrc-lmb.cam.ac.uk/share/fibsem_example/FIBdeSEMAna_21-12-26_005024_0-0-0.dat)
+- [Drosophila larva, 15000x10000](https://neurophyla.mrc-lmb.cam.ac.uk/share/fibsem_example/Merlin-6281_19-08-09_120426_0-0-0.dat)
 
 ## Format notes
 
@@ -149,3 +150,12 @@ This project uses `black` and `isort` for formatting (run `make fmt`), and `pre-
 Use `make fmt` for formatting and `make lint` for spot checks, and `pre-commit run --all` to run all hooks.
 
 If you modify any part of the CLI, use `make readme` to update the help text in the README.
+
+To contribute a new .dat version:
+
+- Write a class called `MetadataV{version}` (see existing examples)
+- Add it to `jfibsem_dat.read.METADATA_VERSIONS`
+- Add to this README a publicly-accessible URL to an example
+  - Ideally this would be a fairly small image
+- Write just the header into `tests/fixtures/`, e.g. `wget -O - $PUBLIC_URL | head -c 1024 > tests/fixtures/$FILENAME.header`
+- Add it to `tests/conftest.py::HEADER_PATHS`
