@@ -167,6 +167,7 @@ class MetadataV8:
     file_length: int  # bytes
 
     @classmethod
+    @tp.no_type_check
     def from_bytes(cls, b: bytes):
         def rd(dtype, index, shape=None):
             return read_from_bytes(
@@ -273,6 +274,7 @@ class MetadataV8:
 
     @classmethod
     def from_filepath(cls, fpath):
+        logger.debug("Reading metadata from %s", fpath)
         with open(fpath, "rb") as f:
             return cls.from_filelike(f)
 
