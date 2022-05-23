@@ -154,7 +154,7 @@ If you modify any part of the CLI, use `make readme` to update the help text in 
 To contribute a new .dat version:
 
 - Write a class called `MetadataV{version}` (see existing examples)
-- Add it to `jfibsem_dat.read.METADATA_VERSIONS`
+- Add it to `jfibsem_dat/read.py::METADATA_VERSIONS`
 - Add to this README a publicly-accessible URL to an example
   - Ideally this would be a fairly small image
 - Write just the header into `tests/fixtures/`, e.g. `wget -O - $PUBLIC_URL | head -c 1024 > tests/fixtures/$FILENAME.header`
