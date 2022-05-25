@@ -14,3 +14,7 @@ indent_style = tab
 
 [*.yaml]
 indent_size = 2
+
+[*.tsv]
+indent_size = 8
+indent_style = tab

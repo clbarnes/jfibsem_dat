@@ -3,6 +3,8 @@ scipy
 scikit-image
 matplotlib
 matplotlib_scalebar
+frozendict
+h5py
 
 # dev
 
