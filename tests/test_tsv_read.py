@@ -1,15 +1,13 @@
-import warnings
-
 import numpy as np
 import pytest
 
 from jfibsem_dat.parse_tsv import (
     HeaderParser,
+    ParsedData,
     dat_to_hdf5,
     dat_to_hdf5_meta,
     hdf5_to_bytes,
     hdf5_to_bytes_meta,
-    read_data,
     write_header,
 )
 from jfibsem_dat.read import HEADER_LENGTH, METADATA_VERSIONS
@@ -72,9 +70,7 @@ def test_can_roundtrip_hdf5_meta(version, tmpdir):
 
 
 def test_can_read_data(real_path):
-    with open(real_path, "rb") as f:
-        b = f.read()
-    meta, array = read_data(b)
+    _ = ParsedData.from_file(real_path)
 
 
 def test_can_roundtrip_hdf5(real_path, tmpdir):
@@ -83,13 +79,10 @@ def test_can_roundtrip_hdf5(real_path, tmpdir):
     roundtripped = hdf5_to_bytes(h5_path)
     with open(real_path, "rb") as f:
         orig = f.read()
-    assert len(orig) >= len(roundtripped)
-    if len(orig) >= len(roundtripped):
-        warnings.warn(
-            "Original data is longer than roundtripped - undocumented footer?"
-        )
-        orig = orig[: len(roundtripped)]
 
-    # excerpt where things are likely to go wrong with byte&axis ordering
+    assert len(orig) == len(roundtripped)
+
+    # excerpt where things are likely to go wrong with byte & axis ordering
     assert orig[1023:1030] == roundtripped[1023:1030]
+    assert orig[-256:] == roundtripped[-256:]
     assert orig == roundtripped

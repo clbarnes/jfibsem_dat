@@ -6,10 +6,12 @@ import h5py
 import numpy as np
 from frozendict import frozendict
 
-from .read import DEFAULT_AXIS_ORDER, DEFAULT_BYTE_ORDER, HEADER_LENGTH
-
 here = Path(__file__).resolve().parent
 spec_dir = here / "specs"
+
+DEFAULT_AXIS_ORDER = "F"
+DEFAULT_BYTE_ORDER = ">"
+HEADER_LENGTH = 1024
 
 
 def read_value(
@@ -153,13 +155,27 @@ def hdf5_to_bytes_meta(hdf5_path: Path, hdf5_group=None) -> bytes:
         return write_header(g.attrs)
 
 
-def read_data(b: bytes) -> tuple[dict[str, tp.Any], np.ndarray]:
-    parser = HeaderParser()
-    meta = parser.parse_bytes(b)
-    shape = (meta["ChanNum"], meta["XResolution"], meta["YResolution"])
-    dtype = np.dtype("u1" if meta["EightBit"] else ">i2")
-    data = read_value(b, dtype, HEADER_LENGTH, shape)
-    return meta, data
+class ParsedData(tp.NamedTuple):
+    meta: dict[str, tp.Any]
+    data: np.ndarray
+    header: tp.Optional[bytes] = None
+    footer: tp.Optional[bytes] = None
+
+    @classmethod
+    def from_bytes(cls, b: bytes):
+        parser = HeaderParser()
+        meta = parser.parse_bytes(b)
+        header = b[:HEADER_LENGTH]
+        shape = (meta["ChanNum"], meta["XResolution"], meta["YResolution"])
+        dtype = np.dtype("u1" if meta["EightBit"] else ">i2")
+        data = read_value(b, dtype, HEADER_LENGTH, shape)
+        footer = b[int(HEADER_LENGTH + np.prod(shape) * dtype.itemsize) :]
+        return cls(meta, data, header, footer)
+
+    @classmethod
+    def from_file(cls, fpath):
+        with open(fpath, "rb") as f:
+            return cls.from_bytes(f.read())
 
 
 def dat_to_hdf5(dat_path: Path, hdf5_path: Path, hdf5_group=None, inputs=None):
@@ -172,14 +188,14 @@ def dat_to_hdf5(dat_path: Path, hdf5_path: Path, hdf5_group=None, inputs=None):
 
     if hdf5_group is None:
         hdf5_group = "/"
-    with open(dat_path, "rb") as f:
-        meta, data = read_data(f.read())
+
+    all_data = ParsedData.from_file(dat_path)
 
     ds_to_channel = dict()
     max_channel = 0
     for input_id in all_inputs:
         ds = f"AI{input_id}"
-        exists = bool(meta[ds])
+        exists = bool(all_data.meta[ds])
 
         if inputs is not None:
             if input_id not in inputs:
@@ -192,10 +208,11 @@ def dat_to_hdf5(dat_path: Path, hdf5_path: Path, hdf5_group=None, inputs=None):
 
     with h5py.File(hdf5_path, "a") as h5:
         g = h5.require_group(hdf5_group)
-        g.attrs.update(meta)
-        # g.attrs["RawHeader"] = np.frombuffer(b, dtype="uint8")
+        g.attrs.update(all_data.meta)
+        g.attrs["_header"] = np.frombuffer(all_data.header, dtype="uint8")
+        g.attrs["_footer"] = np.frombuffer(all_data.footer, dtype="uint8")
         for ds, channel_idx in ds_to_channel.items():
-            g.create_dataset(ds, data=data[channel_idx])
+            g.create_dataset(ds, data=all_data.data[channel_idx])
 
 
 def hdf5_to_bytes(hdf5_path, hdf5_group=None):
@@ -211,8 +228,10 @@ def hdf5_to_bytes(hdf5_path, hdf5_group=None):
             if ds_name not in g:
                 continue
             to_stack.append(g[ds_name][:])
+        footer = g.attrs.get("_footer", np.array([], "uint8"))
 
     stacked = np.stack(to_stack, axis=0)
     dtype = stacked.dtype.newbyteorder(DEFAULT_BYTE_ORDER)
     b = np.asarray(stacked, dtype, order="F").tobytes(order="F")
-    return header + b
+    footer_bytes = footer.tobytes()
+    return header + b + footer_bytes
