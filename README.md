@@ -1,5 +1,13 @@
 # jfibsem_dat
 
+> Note: this library has been abandoned,
+> because the underlying file format is a number of problems.
+> All efforts should be made to immediately convert it into a sane format (e.g. HDF5) and work from there.
+>
+> Our current beliefs about the .dat format are stored here: https://github.com/clbarnes/jeiss-specs
+>
+> and a package which uses that to convert losslessly into HDF5 is here: https://github.com/clbarnes/jeiss-convert
+
 Python implementation of the FIBSEM .dat file format developed at Janelia Research Campus, and associated tools.
 Written for CPython 3.8+.
 
