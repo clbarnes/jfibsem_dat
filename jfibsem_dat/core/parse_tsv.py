@@ -4,10 +4,8 @@ from pathlib import Path
 
 import h5py
 import numpy as np
-from frozendict import frozendict
 
-here = Path(__file__).resolve().parent
-spec_dir = here / "specs"
+spec_dir = Path(__file__).resolve().parent.parent / "specs"
 
 DEFAULT_AXIS_ORDER = "F"
 DEFAULT_BYTE_ORDER = ">"
@@ -88,35 +86,28 @@ class SpecTuple(tp.NamedTuple):
         return out
 
 
-SPECS = frozendict(
-    {
-        int(tsv.stem[1:]): tuple(SpecTuple.from_file(tsv))
-        for tsv in spec_dir.glob("*.tsv")
-    }
-)
+SPECS = {
+    int(tsv.stem[1:]): tuple(SpecTuple.from_file(tsv)) for tsv in spec_dir.glob("*.tsv")
+}
 
 
-class HeaderParser:
-    spec_cache = None
+def _parse_with_version(b: bytes, version: int):
+    spec = SPECS[version]
+    out = dict()
+    for line in spec:
+        line.read_into(b, out)
+    return out
 
-    def _parse_with_version(self, b: bytes, version: int):
-        spec = SPECS[version]
-        out = dict()
-        for line in spec:
-            line.read_into(b, out)
-        return out
 
-    def _parse_core(self, b: bytes):
-        return self._parse_with_version(b, 0)
+def parse_bytes(b: bytes):
+    d = _parse_with_version(b, 0)
+    return _parse_with_version(b, d["FileVersion"])
 
-    def parse_bytes(self, b: bytes):
-        d = self._parse_core(b)
-        return frozendict(self._parse_with_version(b, d["FileVersion"]))
 
-    def parse_file(self, fpath: Path):
-        with open(fpath, "rb") as f:
-            b = f.read(HEADER_LENGTH)
-            return self.parse_bytes(b)
+def parse_file(fpath: Path):
+    with open(fpath, "rb") as f:
+        b = f.read(HEADER_LENGTH)
+        return parse_bytes(b)
 
 
 def write_header(data: dict[str, tp.Any]):
@@ -132,29 +123,6 @@ def write_header(data: dict[str, tp.Any]):
     return buffer.getvalue()
 
 
-def dat_to_hdf5_meta(dat_path: Path, hdf5_path: Path, hdf5_group=None):
-    if hdf5_group is None:
-        hdf5_group = "/"
-    parser = HeaderParser()
-    with open(dat_path, "rb") as f:
-        b = f.read(HEADER_LENGTH)
-        header = parser.parse_bytes(b)
-
-    with h5py.File(hdf5_path, "a") as h5:
-        g = h5.require_group(hdf5_group)
-        g.attrs.update(header)
-        g.attrs["RawHeader"] = np.frombuffer(b, dtype="uint8")
-
-
-def hdf5_to_bytes_meta(hdf5_path: Path, hdf5_group=None) -> bytes:
-    if hdf5_group is None:
-        hdf5_group = "/"
-
-    with h5py.File(hdf5_path) as h5:
-        g = h5[hdf5_group]
-        return write_header(g.attrs)
-
-
 class ParsedData(tp.NamedTuple):
     meta: dict[str, tp.Any]
     data: np.ndarray
@@ -163,8 +131,7 @@ class ParsedData(tp.NamedTuple):
 
     @classmethod
     def from_bytes(cls, b: bytes):
-        parser = HeaderParser()
-        meta = parser.parse_bytes(b)
+        meta = parse_bytes(b)
         header = b[:HEADER_LENGTH]
         shape = (meta["ChanNum"], meta["XResolution"], meta["YResolution"])
         dtype = np.dtype("u1" if meta["EightBit"] else ">i2")

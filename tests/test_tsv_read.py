@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from jfibsem_dat.parse_tsv import (
+from jfibsem_dat.core.parse_tsv import (
     HeaderParser,
     ParsedData,
     dat_to_hdf5,
